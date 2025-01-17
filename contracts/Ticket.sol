@@ -28,6 +28,20 @@ contract Ticket is ERC721 {
         address originalOwner; 
     }
 
+    struct QRCodeData {
+        uint256 tokenId;
+        uint256 occasionId;
+        uint256 seatNumber;
+        address ticketHolder;
+        string eventTitle;
+        string eventDate;
+        string eventTime;
+        string eventLocation;
+        bool isValid;
+    }
+
+
+
     mapping(uint256 => Occassion) occasions;
     mapping(uint256 => mapping(address => bool)) public hasBought;
     mapping(uint256 => mapping(uint256 => address)) public seatTaken;
@@ -37,6 +51,7 @@ contract Ticket is ERC721 {
     event TicketListedForSale(uint256 tokenId, uint256 price);
     event TicketSold(uint256 tokenId, address from, address to, uint256 price);
     event TicketUnlisted(uint256 tokenId);
+    event TicketValidated(uint256 tokenId, address ticketHolder, uint256 timestamp);
     
         /**
  * @notice Restricts function access to only the contract owner
@@ -206,4 +221,63 @@ function unlistTicket(uint256 tokenId) public onlyTicketOwner(tokenId) {
     (bool success,) = owner.call{value: address(this).balance}("");
     require(success);
  }
+ function generateQRCodeData(uint256 tokenId) public view returns (QRCodeData memory) {
+  _validateToken(tokenId);
+
+  (TicketInfo storage ticket, Occassion storage occasion) = _getTicketAndOccasion(tokenId);
+
+  return _assembleQRCodeData(tokenId, ticket, occasion);
+}
+
+function _validateToken(uint256 tokenId) private view {
+    require(tokenId > 0 && tokenId <= totalSupply, "Token does not exist");
+    require(ownerOf(tokenId) != address(0), "Token doesn't exist");
+} 
+
+function _isValidToken(uint256 tokenId) private view returns (bool) {
+    return (tokenId > 0 && tokenId <= totalSupply && ownerOf(tokenId) != address(0));
+}
+
+function _assembleQRCodeData(uint256 tokenId, TicketInfo storage ticket, Occassion storage occasion) private view returns (QRCodeData memory) {
+    return QRCodeData({
+        tokenId: tokenId,
+        occasionId: ticket.occasionId,
+        seatNumber: ticket.seatNumber,
+        ticketHolder: ownerOf(tokenId),
+        eventTitle: occasion.title,
+        eventDate: occasion.date,
+        eventTime: occasion.time,
+        eventLocation: occasion.location,
+        isValid: _isValidToken(tokenId)
+    });
+}
+
+function verifyTicket(
+    uint256 tokenId,
+    address ticketHolder
+) public view returns (bool) {
+    if (tokenId == 0 || tokenId > totalSupply) {
+        return false;
+    }
+
+    TicketInfo storage ticket = ticketDetails[tokenId];
+    address currentOwner = ownerOf(tokenId);
+
+    return (currentOwner == ticketHolder && !ticket.isForSale);
+}
+
+function _getTicketAndOccasion(uint256 tokenId) private view
+   returns (TicketInfo storage ticket, Occassion storage occasion) {
+    ticket = ticketDetails[tokenId];
+    occasion = occasions[ticket.occasionId];
+    return (ticket, occasion);
+   }
+
+function validateTicketAtVenue(uint256 tokenId) public onlyOwner {
+    require(tokenId > 0 && tokenId <= totalSupply, "Token does not exist");
+    address ticketHolder = ownerOf(tokenId);
+
+    emit TicketValidated(tokenId, ticketHolder, block.timestamp);
+}
+
 }
