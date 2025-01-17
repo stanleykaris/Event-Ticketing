@@ -17,18 +17,42 @@ contract Ticket is ERC721 {
         string date;
         string time;
         string location;
+        uint256 maxResalePrice;
+    }
+
+    struct TicketInfo {
+        uint256 occasionId;
+        uint256 seatNumber;
+        bool isForSale;
+        uint256 resalePrice;
+        address originalOwner; 
     }
 
     mapping(uint256 => Occassion) occasions;
     mapping(uint256 => mapping(address => bool)) public hasBought;
     mapping(uint256 => mapping(uint256 => address)) public seatTaken;
     mapping(uint256 => uint256[]) seatsTaken;
-    /**
+    mapping(uint256 => TicketInfo) public ticketDetails;
+
+    event TicketListedForSale(uint256 tokenId, uint256 price);
+    event TicketSold(uint256 tokenId, address from, address to, uint256 price);
+    event TicketUnlisted(uint256 tokenId);
+    
+        /**
  * @notice Restricts function access to only the contract owner
  * @dev Throws if called by any account other than the owner
  */
     modifier onlyOwner {
         require(msg.sender == owner, "Caller is not the owner");
+        _;
+    }
+
+    /**
+     * @notice Restricts function access to only the ticket owner
+     * @dev Throws if called by any account other than the ticket owner
+     */
+    modifier onlyTicketOwner(uint256 tokenId) {
+        require(ownerOf(tokenId) == msg.sender, "Caller is not the ticket owner");
         _;
     }
 
@@ -49,7 +73,8 @@ contract Ticket is ERC721 {
     uint256 _maxTickets,
     string memory _date,
     string memory _time,
-    string memory _location
+    string memory _location,
+    uint256 _maxResalePrice
    ) public onlyOwner {
     totalOccassions++;
     occasions[totalOccassions] = Occassion(
@@ -60,7 +85,8 @@ contract Ticket is ERC721 {
         _maxTickets,
         _date,
         _time,
-        _location
+        _location,
+        _maxResalePrice
     );
 }
 /// @notice Mints a new ticket NFT for a specific occasion and seat
@@ -86,8 +112,93 @@ contract Ticket is ERC721 {
     seatsTaken[_id].push(_seat); // Update seats currently taken
     totalSupply++;
 
+    // Create ticket details
+    ticketDetails[totalSupply] = TicketInfo({
+        occasionId: _id,
+        seatNumber: _seat,
+        isForSale: false,
+        resalePrice: 0,
+        originalOwner: msg.sender
+    });
+
     _safeMint(msg.sender, totalSupply);
  }
+
+ function listTicketForSale(uint256 tokenId, uint256 price) public onlyTicketOwner(tokenId) {
+    TicketInfo storage ticket = ticketDetails[tokenId];
+    Occassion storage occasion = occasions[ticket.occasionId];
+
+    require(!ticket.isForSale, "Ticket already listed for sale");
+    require(price <= occasion.maxResalePrice, "Price exceeds maximum allowed");
+
+    ticket.isForSale = true;
+    ticket.resalePrice = price;
+
+    emit TicketListedForSale(tokenId, price);
+}
+
+// Remove ticket from sale
+function unlistTicket(uint256 tokenId) public onlyTicketOwner(tokenId) {
+    TicketInfo storage ticket = ticketDetails[tokenId];
+    require(ticket.isForSale, "Ticket not listed for sale");
+
+    ticket.isForSale = false;
+    ticket.resalePrice = 0;
+
+    emit TicketUnlisted(tokenId); 
+}
+
+// Purchase a resale ticket
+    function buyResaleTicket(uint256 tokenId) public payable {
+        TicketInfo storage ticket = ticketDetails[tokenId];
+        require(ticket.isForSale, "Ticket not for sale");
+        require(msg.value >= ticket.resalePrice, "Insufficient payment");
+        
+        address seller = ownerOf(tokenId);
+        require(msg.sender != seller, "Cannot buy your own ticket");
+
+        // Update ticket details
+        ticket.isForSale = false;
+        uint256 resalePrice = ticket.resalePrice;
+        ticket.resalePrice = 0;
+
+        // Transfer ownership
+        _transfer(seller, msg.sender, tokenId);
+
+        // Update seat tracking
+        seatTaken[ticket.occasionId][ticket.seatNumber] = msg.sender;
+        hasBought[ticket.occasionId][msg.sender] = true;
+
+        // Transfer payment to seller
+        (bool success, ) = payable(seller).call{value: resalePrice}("");
+        require(success, "Transfer to seller failed");
+
+        emit TicketSold(tokenId, seller, msg.sender, resalePrice);
+    }
+
+    // Getting ticket details
+    function getTicketDetails(uint256 tokenId) public view returns (
+        uint256 occasionId,
+        uint256 seatNumber,
+        bool isForSale,
+        uint256 resalePrice,
+        address originalOwner
+    ) {
+        TicketInfo storage ticket = ticketDetails[tokenId];
+        return (
+            ticket.occasionId,
+            ticket.seatNumber,
+            ticket.isForSale,
+            ticket.resalePrice,
+            ticket.originalOwner
+        );
+    }
+
+    // Checking if the ticket is for sale
+    function isTicketForSale(uint256 tokenId) public view returns (bool, uint256) {
+        TicketInfo memory ticket = ticketDetails[tokenId];
+        return (ticket.isForSale, ticket.resalePrice);
+    }
 /// @notice Allows the owner to withdraw all ETH from the contract
 /// @dev Uses low-level call to transfer ETH balance to owner
 /// @custom:security Non-reentrant by default since state changes happen before transfer
