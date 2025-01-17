@@ -10,8 +10,8 @@ contract Ticket is ERC721 {
 
     struct Occassion {
         uint256 id;
-        string name;
-        uint256 cost;
+        string title;
+        uint256 price;
         uint256 tickets;
         uint256 maxTickets;
         string date;
@@ -60,16 +60,16 @@ contract Ticket is ERC721 {
         owner = msg.sender;
     }
     /// @notice Creates a new event occasion with specified details
-/// @param _name Name of the event
-/// @param _cost Cost per ticket in wei
+/// @param _title Name of the event
+/// @param _price Cost per ticket in wei
 /// @param _maxTickets Maximum number of tickets available
 /// @param _date Date of the event
 /// @param _time Time of the event
 /// @param _location Location where event will be held
 /// @dev Only callable by contract owner
    function list(
-    string memory _name,
-    uint256 _cost,
+    string memory _title,
+    uint256 _price,
     uint256 _maxTickets,
     string memory _date,
     string memory _time,
@@ -79,8 +79,8 @@ contract Ticket is ERC721 {
     totalOccassions++;
     occasions[totalOccassions] = Occassion(
         totalOccassions,
-        _name,
-        _cost,
+        _title,
+        _price,
         0, // initial tickets value
         _maxTickets,
         _date,
@@ -100,7 +100,7 @@ contract Ticket is ERC721 {
     require(_id <= totalOccassions, "Occasion ID exceeds total occasions");
 
     // Require that ETH sent is greater than cost...
-    require(msg.value >= occasions[_id].cost, "Insufficient ETH sent for the occasion");
+    require(msg.value >= occasions[_id].price, "Insufficient ETH sent for the occasion");
 
     // Require that the seat is not taken, and the seats exists...
     require(_seat < occasions[_id].maxTickets, "Seat number exceeds max tickets");
