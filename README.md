@@ -60,7 +60,7 @@ npm install --save-dev hardhat
 │   │   └── App.js          # Main Application File
 │   └── public/             # Static Assets
 ├── contracts/              # Smart Contracts (Solidity)
-│   ├── Ticketing.sol       # Core Smart Contract
+│   ├── Ticket.sol       # Core Smart Contract
 ├── scripts/                # Hardhat Scripts (Deployment, Interactions)
 ├── test/                   # Smart Contract Tests
 ├── hardhat.config.js       # Hardhat Configuration
