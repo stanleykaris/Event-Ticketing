@@ -27,7 +27,7 @@ EventVerse is a decentralized event ticketing platform built on the Avalanche bl
 #### Setup Instructions
 1. Clone the repository:
    ```bash
-   git clone [repository-url]
+   git clone https://github.com/Avalanche-Team1-DAO-Kenya/Event-Ticketing.git
    ```
 2. Install dependencies:
    ```bash
@@ -50,7 +50,7 @@ EventVerse is a decentralized event ticketing platform built on the Avalanche bl
 
 #### Team Members
 - Williams Otieno – Smart Contract Developer
-- Brandistone – Frontend Developer
+- Brandistone Mabeya– Frontend Developer
 - John Mokaya – Frontend Designer
 - Stanley Kariuki – Smart Contract Developer
 - Felix - Frontend Developer
