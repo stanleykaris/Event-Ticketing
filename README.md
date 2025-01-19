@@ -45,7 +45,7 @@ EventVerse is a decentralized event ticketing platform built on the Avalanche bl
    ```
 6. Run the application locally:
    ```bash
-   npm start
+   npm run dev
    ```
 
 #### Team Members
